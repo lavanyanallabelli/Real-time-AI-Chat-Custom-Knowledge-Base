@@ -26,10 +26,27 @@ export const askQuery = async (req, res) => {
         console.log(`Query received: "${userQuery}"`);
         console.log(`Available documents: ${uploadedDocs.length}`);
 
+        // Calculate total content size
+        const totalCharacters = uploadedDocs.reduce((sum, doc) => sum + doc.content.length, 0);
+        const estimatedTokens = Math.ceil(totalCharacters / 4); // Rough estimate: 1 token ≈ 4 characters
+
+        console.log(`📊 Document Stats:`);
+        console.log(`   Total characters: ${totalCharacters.toLocaleString()}`);
+        console.log(`   Estimated tokens: ${estimatedTokens.toLocaleString()}`);
+        console.log(`   Token limit: 128,000 (GPT-4o-mini)`);
+        console.log(`   Usage: ${((estimatedTokens / 128000) * 100).toFixed(1)}% of limit`);
+
         let context = "";
         let documentsUsed = [];
 
         if (uploadedDocs.length > 0) {
+            // Check if we're approaching token limits
+            const isLargeDocumentSet = estimatedTokens > 80000; // 80% of limit
+
+            if (isLargeDocumentSet) {
+                console.log(`⚠️  Large document set detected! Consider using semantic search for better performance.`);
+            }
+
             context = `You have access to ${uploadedDocs.length} uploaded document(s). Please provide accurate answers based on these documents:\n\n`;
 
             uploadedDocs.forEach((doc, index) => {
@@ -44,6 +61,10 @@ export const askQuery = async (req, res) => {
             });
 
             context += `\nIMPORTANT: When answering, always specify which document(s) you're referencing. If the information isn't in any of these documents, say so clearly.`;
+
+            if (isLargeDocumentSet) {
+                context += `\n\nNOTE: You have access to a large number of documents. Focus on the most relevant information for the user's question.`;
+            }
         } else {
             context = "No documents have been uploaded yet. Please upload a document first.";
         }
