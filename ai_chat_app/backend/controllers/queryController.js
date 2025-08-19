@@ -30,15 +30,20 @@ export const askQuery = async (req, res) => {
         let documentsUsed = [];
 
         if (uploadedDocs.length > 0) {
-            context = "Based on the uploaded documents:\n\n";
+            context = `You have access to ${uploadedDocs.length} uploaded document(s). Please provide accurate answers based on these documents:\n\n`;
+
             uploadedDocs.forEach((doc, index) => {
                 console.log(`Document ${index + 1}: ${doc.filename} (${doc.content.length} chars)`);
-                context += `Document ${index + 1} (${doc.filename}):\n${doc.content}\n\n`;
+                context += `--- DOCUMENT ${index + 1}: ${doc.filename} ---\n`;
+                context += `${doc.content}\n\n`;
                 documentsUsed.push({
                     id: doc.id,
-                    filename: doc.filename
+                    filename: doc.filename,
+                    contentLength: doc.content.length
                 });
             });
+
+            context += `\nIMPORTANT: When answering, always specify which document(s) you're referencing. If the information isn't in any of these documents, say so clearly.`;
         } else {
             context = "No documents have been uploaded yet. Please upload a document first.";
         }
@@ -49,7 +54,17 @@ export const askQuery = async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: "You are a helpful assistant that answers questions based on uploaded documents. Always reference the specific document when providing information."
+                    content: `You are an intelligent document analysis assistant. Your role is to:
+
+1. Analyze multiple uploaded documents thoroughly
+2. Provide accurate, contextual answers based ONLY on the provided documents
+3. Always specify which document(s) you're referencing in your answers
+4. If information is not found in any document, clearly state this
+5. For multi-document questions, synthesize information across relevant documents
+6. Provide specific citations (e.g., "According to Document 1: filename.pdf...")
+7. Be concise but comprehensive in your responses
+
+Format your responses with clear document references and structured information.`
                 },
                 {
                     role: "user",

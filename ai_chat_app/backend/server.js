@@ -3,9 +3,12 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import multer from 'multer';
-//import { createClient } from 'redis';
 import documentRoutes from './routes/documentRoutes.js';
 import queryRoutes from './routes/queryRoutes.js';
+import testRoutes from './routes/testRoutes.js';
+// Test Firebase connection on startup
+import { db } from './config/firebase.js';
+import { collection, getDocs } from 'firebase/firestore';
 
 
 const app = express();
@@ -15,28 +18,34 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Redis client
-// const redisClient = createClient({ url: 'redis://localhost:6379' });
-// redisClient.connect()
-// .then(() => console.log('Connected to Redis'))
-// .catch(err => console.error('Redis connection error:', err));
-// 
-// 
-//Make Redis available in request object
-// app.use((req, res, next) => {
-// req.redisClient = redisClient;
-// next();
-// });
-// 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        message: 'AI Chat App Backend is running',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
 // Routes
 app.use('/api/documents', documentRoutes);
 app.use('/api/query', queryRoutes);
+app.use('/api/test', testRoutes);
 
-
-// Multer setup for file uploads
-const upload = multer({ dest: 'uploads/' });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
+
+    // Test Firebase connection
+    try {
+        console.log('Testing Firebase connection...');
+        const querySnapshot = await getDocs(collection(db, 'documents'));
+        console.log('✅ Firebase connected successfully!');
+        console.log(`📊 Total documents in database: ${querySnapshot.size}`);
+    } catch (error) {
+        console.error('❌ Firebase connection failed:', error.message);
+        console.log('💡 Make sure your .env file has correct Firebase configuration');
+    }
 });
